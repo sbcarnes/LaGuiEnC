@@ -14,16 +14,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     
     static RECT rcClient;    // client-area rectangle
     static RECT hzBox;       // Horizontal box
+    static RECT statDisplay; // Dynamic rectangle for holding window information
+    static RECT wnRect;
+    static RECT cnvRect;
     
-    static HBRUSH bkgnd_01;  // Handle of background-color brush
-    static HBRUSH bkgnd_02;  // Handle of background-color brush
+    static HRGN hRgn;
+    
+    static HBRUSH csrTrkBr;  // Handle of cursor tracker brush
+    static HBRUSH wnDimBr;   // Handle of window dimension brush
+    static HBRUSH bkBr;
     static HPEN hPen;        // Handle for display box outline
+    static HPEN statPen;
     
     static HINSTANCE hInstance;
     
     static POINT pt;         // x and y coordinates of cursor
     
     static char printDimensions[64];
+    static char windowInfo[128];
     static int windowWidth;
     static int windowHeight;
     
@@ -31,14 +39,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	switch(msg)
 	{
 		case WM_CREATE:
-            
+            // Capture initial window information
             hdc = GetDC(hwnd);
             GetClientRect(hwnd, &rcClient);
+            
+            // Set up canvas rectangle
+            GetClientRect(hwnd, &cnvRect);
+            bkBr = (HBRUSH) GetBkColor(hdc);
+            
+            // Capture initial cursor coordinates
+            pt.x = (LONG) LOWORD(lParam); 
+            pt.y = (LONG) HIWORD(lParam);
+            
+            // Cursor tracking rectangle and readout
+            hPen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
+            csrTrkBr = CreateSolidBrush(RGB(177, 177, 230));
+            SetRect(&hzBox, 20, 20, 140, 100);
+            
+            // Capture initial window dimensions
             windowWidth = rcClient.right - rcClient.left;
             windowHeight = rcClient.bottom - rcClient.top;
-            sprintf(printDimensions, "Width: %d \n\n Height: %d", windowWidth, windowHeight);
-            hPen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
-            SetRect(&hzBox, 20, 20, 140, 100); 
+            
+            // Window dimension rectangle and readout
+            statPen = CreatePen(PS_SOLID, 3, RGB(0, 100, 0));
+            wnDimBr = CreateSolidBrush(RGB(190, 100, 30));
+            SetRect(&statDisplay, 0, rcClient.bottom - 20, rcClient.right, rcClient.bottom);
             
         break;
         case WM_LBUTTONDOWN:
@@ -50,35 +75,65 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		break;
         case WM_PAINT:
             {
+                //InvalidateRect(hwnd, NULL, TRUE);
                 BeginPaint(hwnd, &ps);
                 
-                SelectObject(ps.hdc, CreateSolidBrush(RGB(177, 177, 230)));
+                SelectObject(ps.hdc, bkBr);
+                Rectangle(ps.hdc, cnvRect.left, cnvRect.top,
+                cnvRect.right, cnvRect.bottom);
                 
-                // Accidentally only set the hdc instead of ps.hdc
+                // Paint the cursor tracker
+                SelectObject(ps.hdc, hPen);
+                SelectObject(ps.hdc, csrTrkBr);
                 Rectangle(ps.hdc, hzBox.left, hzBox.top, 
                 hzBox.right, hzBox.bottom);
                 SetBkMode(ps.hdc, TRANSPARENT);
+                sprintf(printDimensions, " Mouse X: %ld \n\n Mouse Y: %ld", pt.x, pt.y);
                 DrawText(ps.hdc, printDimensions, 32, &hzBox, DT_LEFT);
                 memset(printDimensions, '\0', sizeof(printDimensions));
+                
+                // Paint the window dimension display
+                SelectObject(ps.hdc, statPen);
+                SelectObject(ps.hdc, wnDimBr);
+                Rectangle(ps.hdc, statDisplay.left, statDisplay.top, 
+                statDisplay.right, statDisplay.bottom);
+                SetBkMode(ps.hdc, TRANSPARENT);
+                sprintf(windowInfo, "Window width: %d \t\t Window height: %d", windowWidth, windowHeight);
+                DrawText(ps.hdc, windowInfo, 64, &statDisplay, DT_LEFT);
+                memset(windowInfo, '\0', sizeof(windowInfo));
+                
                 EndPaint(hwnd, &ps);
             }
         break;
         case WM_SIZING:
             
-        break;
-        case WM_MOUSEMOVE:
-            pt.x = (LONG) LOWORD(lParam); 
-            pt.y = (LONG) HIWORD(lParam);
             hdc = GetDC(hwnd);
-            sprintf(printDimensions, " Mouse X: %ld \n\n Mouse Y: %ld", pt.x, pt.y);
-            SelectObject(hdc, CreateSolidBrush(RGB(177, 177, 230)));
-            Rectangle(hdc, hzBox.left, hzBox.top, 
-                hzBox.right, hzBox.bottom);
-            SetBkMode(hdc, TRANSPARENT);
-            DrawText(hdc, printDimensions, 32, &hzBox, DT_LEFT);
-            memset(printDimensions, '\0', sizeof(printDimensions));
+            GetClientRect(hwnd, &rcClient);
+            GetClientRect(hwnd, &cnvRect);
+            InvalidateRect(hwnd, &wnRect, TRUE);
+            windowWidth = rcClient.right - rcClient.left;
+            windowHeight = rcClient.bottom - rcClient.top;
+            SetRect(&statDisplay, 0, rcClient.bottom - 20, rcClient.right, rcClient.bottom);
+            hRgn = CreateRectRgn(rcClient.left, rcClient.top,
+            rcClient.right, rcClient.bottom);
+            RedrawWindow(hwnd, &rcClient, hRgn, RDW_INVALIDATE | RDW_UPDATENOW);
             ReleaseDC(hwnd, hdc);
             
+        break;
+        case WM_MOUSEMOVE:
+            
+            hdc = GetDC(hwnd);
+            GetClientRect(hwnd, &rcClient);
+            GetClientRect(hwnd, &cnvRect);
+            pt.x = (LONG) LOWORD(lParam); 
+            pt.y = (LONG) HIWORD(lParam);
+            hRgn = CreateRectRgn(rcClient.left, rcClient.top,
+            rcClient.right, rcClient.bottom);
+            RedrawWindow(hwnd, &rcClient, hRgn, RDW_INVALIDATE | RDW_UPDATENOW);
+            ReleaseDC(hwnd, hdc);
+            
+        break;
+        case WM_ERASEBKGND:
         break;
 		case WM_CLOSE:
 			DestroyWindow(hwnd);
