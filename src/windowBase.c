@@ -25,11 +25,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     static char windowInfo[128];
     static int windowWidth;
     static int windowHeight;
+    
+    static BOOL buttonActive = FALSE;
 
     switch (msg)
     {
         case WM_CREATE:
         {
+            CREATESTRUCT *pCreate = (CREATESTRUCT *) lParam;
+            HINSTANCE hInstance = pCreate->hInstance;
+            
             HDC hdc = GetDC(hwnd);
             hdcCompat = CreateCompatibleDC(hdc);
             GetClientRect(hwnd, &rcClient);
@@ -46,10 +51,35 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             statPen = CreatePen(PS_SOLID, 3, RGB(0, 100, 0));
             wnDimBr = CreateSolidBrush(RGB(190, 100, 30));
             SetRect(&statDisplay, 0, rcClient.bottom - 20, rcClient.right, rcClient.bottom);
+            
+            HWND hwndButton = CreateWindow(
+                "BUTTON",
+                "Click Me",
+                WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+                50, 150, 100, 30,
+                hwnd,
+                (HMENU)1,
+                hInstance,
+                NULL
+            );
 
             ReleaseDC(hwnd, hdc);
         }
         break;
+        
+        case WM_COMMAND: {
+            int control_id = LOWORD(wParam);
+            int notification = HIWORD(wParam);
+            HWND hwndControl = (HWND)lParam;
+            
+            if (control_id == 1 && notification == BN_CLICKED) {
+                //MessageBeep(MB_OK);
+                buttonActive = !buttonActive;
+                InvalidateRect(hwnd, NULL, TRUE);
+            }
+            break;
+        }
+        
 
         case WM_PAINT:
         {
@@ -67,8 +97,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
             // Draw static rectangle
             SelectObject(memDC, hPen);
-            SelectObject(memDC, csrTrkBr);
+            //SelectObject(memDC, csrTrkBr);
+            HBRUSH currentBrush = CreateSolidBrush(buttonActive ? RGB(217, 214, 156) : RGB(177, 177, 230));
+            SelectObject(memDC, currentBrush);
             Rectangle(memDC, hzBox.left, hzBox.top, hzBox.right, hzBox.bottom);
+            
+            DeleteObject(currentBrush);
 
             SetBkMode(memDC, TRANSPARENT);
             sprintf(printDimensions, " Mouse X: %ld\n Mouse Y: %ld", pt.x, pt.y);
@@ -160,7 +194,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
     hwnd = CreateWindowEx(
-        WS_EX_CLIENTEDGE,
+        WS_EX_COMPOSITED | WS_EX_CLIENTEDGE,
         g_szClassName,
         "Interfacing in Memory Safe Hues",
         WS_OVERLAPPEDWINDOW,
