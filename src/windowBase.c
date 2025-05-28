@@ -27,6 +27,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     static int windowHeight;
     
     static BOOL buttonActive = FALSE;
+    
+    static int redVal[4] = {245,245,66,66};
+    static int greVal[4] = {66,245,245,66};
+    static int bluVal[4] = {66,66,66,245};
+    static int rgbInc = 0;
 
     switch (msg)
     {
@@ -52,13 +57,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             wnDimBr = CreateSolidBrush(RGB(190, 100, 30));
             SetRect(&statDisplay, 0, rcClient.bottom - 20, rcClient.right, rcClient.bottom);
             
-            HWND hwndButton = CreateWindow(
+            HWND hwndButton_01 = CreateWindow(
                 "BUTTON",
-                "Click Me",
+                "Cycle",
                 WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
                 50, 150, 100, 30,
                 hwnd,
                 (HMENU)1,
+                hInstance,
+                NULL
+            );
+            
+            HWND hwndButton_02 = CreateWindow(
+                "BUTTON",
+                "Reset",
+                WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+                175, 150, 100, 30,
+                hwnd,
+                (HMENU)2,
                 hInstance,
                 NULL
             );
@@ -72,9 +88,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             int notification = HIWORD(wParam);
             HWND hwndControl = (HWND)lParam;
             
-            if (control_id == 1 && notification == BN_CLICKED) {
+            if (notification == BN_CLICKED) {
                 //MessageBeep(MB_OK);
-                buttonActive = !buttonActive;
+                if(control_id ==1){
+                    buttonActive = !buttonActive;
+                    rgbInc++;
+                    rgbInc = rgbInc % (sizeof(redVal) / sizeof(redVal[0]));
+                }
+                else if(control_id == 2){
+                    rgbInc = 0;
+                }
+                
                 InvalidateRect(hwnd, NULL, TRUE);
             }
             break;
@@ -97,8 +121,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
             // Draw static rectangle
             SelectObject(memDC, hPen);
-            //SelectObject(memDC, csrTrkBr);
-            HBRUSH currentBrush = CreateSolidBrush(buttonActive ? RGB(217, 214, 156) : RGB(177, 177, 230));
+            HBRUSH currentBrush = CreateSolidBrush(RGB(redVal[rgbInc], greVal[rgbInc], bluVal[rgbInc]));
             SelectObject(memDC, currentBrush);
             Rectangle(memDC, hzBox.left, hzBox.top, hzBox.right, hzBox.bottom);
             
@@ -159,6 +182,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             DeleteObject(csrTrkBr);
             DeleteObject(statPen);
             DeleteObject(wnDimBr);
+            
             PostQuitMessage(0);
         break;
 
