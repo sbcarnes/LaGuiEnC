@@ -1,6 +1,6 @@
 CC = gcc
 
-LINK_EXE = ./bin/windowBase
+LINK_EXE = ./bin/windowBase.exe
 
 # Libraries to include
 LIBS = -lgdi32
@@ -25,6 +25,5 @@ $(LINK_EXE): $(OBJS)
 	$(CC) $(LIBS) $(CFLAGS) $^ -o $@
 
 clean:
-	rm -f *.o
-	rm -f *~
-	rm -f $(LINK_EXE)
+	@if exist "build\windowBase.o" del /Q "build\windowBase.o"
+	@if exist "bin\windowBase.exe" del /Q "bin\windowBase.exe"
