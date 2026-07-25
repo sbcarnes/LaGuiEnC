@@ -99,7 +99,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                     rgbInc = 0;
                 }
                 
-                InvalidateRect(hwnd, NULL, TRUE);
+                InvalidateRect(hwnd, &hzBox, FALSE);
             }
             break;
         }
@@ -122,8 +122,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             // Draw static rectangle
             SelectObject(memDC, hPen);
             HBRUSH currentBrush = CreateSolidBrush(RGB(redVal[rgbInc], greVal[rgbInc], bluVal[rgbInc]));
-            SelectObject(memDC, currentBrush);
+            
+            HBRUSH oldBrush = SelectObject(memDC, currentBrush);
+            
             Rectangle(memDC, hzBox.left, hzBox.top, hzBox.right, hzBox.bottom);
+            
+            SelectObject(memDC, oldBrush);
             
             DeleteObject(currentBrush);
 
@@ -154,18 +158,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         {
             pt.x = (LONG)LOWORD(lParam);
             pt.y = (LONG)HIWORD(lParam);
-            InvalidateRect(hwnd, NULL, TRUE);
+            
+            InvalidateRect(hwnd, &hzBox, FALSE);
         }
         break;
 
-        case WM_SIZING:
         case WM_SIZE:
         {
             GetClientRect(hwnd, &rcClient);
+            
             windowWidth = rcClient.right - rcClient.left;
             windowHeight = rcClient.bottom - rcClient.top;
+            
             SetRect(&statDisplay, 0, rcClient.bottom - 20, rcClient.right, rcClient.bottom);
-            InvalidateRect(hwnd, NULL, TRUE);
+            
+            InvalidateRect(hwnd, NULL, FALSE);
         }
         break;
 
