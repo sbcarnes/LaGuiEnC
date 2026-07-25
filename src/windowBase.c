@@ -4,6 +4,12 @@
 
 const char g_szClassName[] = "myWindowClass";
 
+enum ControlId
+{
+    ID_BUTTON_CYCLE = 1001,
+    ID_BUTTON_RESET = 1002
+};
+
 typedef struct AppState
 {
     HWND cycleButton;
@@ -27,25 +33,12 @@ typedef struct AppState
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    static RECT rcClient;
-    static RECT hzBox;
-    static RECT statDisplay;
-    
-    static HBRUSH wnDimBr;
-    static HPEN hPen;
-    static HPEN statPen;
-
-    static POINT pt;
-
     static char printDimensions[64];
     static char windowInfo[128];
-    static int windowWidth;
-    static int windowHeight;
     
     static int redVal[4] = {245,245,66,66};
     static int greVal[4] = {66,245,245,66};
     static int bluVal[4] = {66,66,66,245};
-    static int rgbInc = 0;
     
     static AppState app;
 
@@ -56,36 +49,36 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             CREATESTRUCT *pCreate = (CREATESTRUCT *) lParam;
             HINSTANCE hInstance = pCreate->hInstance;
             
-            GetClientRect(hwnd, &rcClient);
+            GetClientRect(hwnd, &app.clientRect);
 
-            hPen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
-            SetRect(&hzBox, 20, 20, 140, 100);
+            app.demoPen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
+            SetRect(&app.demoRect, 20, 20, 140, 100);
 
-            windowWidth = rcClient.right - rcClient.left;
-            windowHeight = rcClient.bottom - rcClient.top;
+            app.windowWidth = app.clientRect.right - app.clientRect.left;
+            app.windowHeight = app.clientRect.bottom - app.clientRect.top;
 
-            statPen = CreatePen(PS_SOLID, 3, RGB(0, 100, 0));
-            wnDimBr = CreateSolidBrush(RGB(190, 100, 30));
-            SetRect(&statDisplay, 0, rcClient.bottom - 20, rcClient.right, rcClient.bottom);
+            app.statusPen = CreatePen(PS_SOLID, 3, RGB(0, 100, 0));
+            app.statusBrush = CreateSolidBrush(RGB(190, 100, 30));
+            SetRect(&app.statusRect, 0, app.clientRect.bottom - 20, app.clientRect.right, app.clientRect.bottom);
             
-            HWND hwndButton_01 = CreateWindow(
+            app.cycleButton = CreateWindow(
                 "BUTTON",
                 "Cycle",
                 WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
                 50, 150, 100, 30,
                 hwnd,
-                (HMENU)1,
+                (HMENU)ID_BUTTON_CYCLE,
                 hInstance,
                 NULL
             );
             
-            HWND hwndButton_02 = CreateWindow(
+            app.resetButton = CreateWindow(
                 "BUTTON",
                 "Reset",
                 WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
                 175, 150, 100, 30,
                 hwnd,
-                (HMENU)2,
+                (HMENU)ID_BUTTON_RESET,
                 hInstance,
                 NULL
             );
@@ -98,15 +91,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             
             if (notification == BN_CLICKED) {
                 //MessageBeep(MB_OK);
-                if(control_id ==1){
-                    rgbInc++;
-                    rgbInc = rgbInc % (sizeof(redVal) / sizeof(redVal[0]));
+                if(control_id == ID_BUTTON_CYCLE){
+                    app.colorIndex++;
+                    app.colorIndex = app.colorIndex % (sizeof(redVal) / sizeof(redVal[0]));
                 }
-                else if(control_id == 2){
-                    rgbInc = 0;
+                else if(control_id == ID_BUTTON_RESET){
+                    app.colorIndex = 0;
                 }
                 
-                InvalidateRect(hwnd, &hzBox, FALSE);
+                InvalidateRect(hwnd, &app.demoRect, FALSE);
             }
             break;
         }
@@ -117,41 +110,41 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
 
-            GetClientRect(hwnd, &rcClient);
+            GetClientRect(hwnd, &app.clientRect);
 
             HDC memDC = CreateCompatibleDC(hdc);
-            HBITMAP memBitmap = CreateCompatibleBitmap(hdc, rcClient.right, rcClient.bottom);
+            HBITMAP memBitmap = CreateCompatibleBitmap(hdc, app.clientRect.right, app.clientRect.bottom);
             HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, memBitmap);
 
             // Clear background in memory DC
-            FillRect(memDC, &rcClient, (HBRUSH)(COLOR_WINDOW + 1));
+            FillRect(memDC, &app.clientRect, (HBRUSH)(COLOR_WINDOW + 1));
 
             // Draw static rectangle
-            SelectObject(memDC, hPen);
-            HBRUSH currentBrush = CreateSolidBrush(RGB(redVal[rgbInc], greVal[rgbInc], bluVal[rgbInc]));
+            SelectObject(memDC, app.demoPen);
+            HBRUSH currentBrush = CreateSolidBrush(RGB(redVal[app.colorIndex], greVal[app.colorIndex], bluVal[app.colorIndex]));
             
             HBRUSH oldBrush = SelectObject(memDC, currentBrush);
             
-            Rectangle(memDC, hzBox.left, hzBox.top, hzBox.right, hzBox.bottom);
+            Rectangle(memDC, app.demoRect.left, app.demoRect.top, app.demoRect.right, app.demoRect.bottom);
             
             SelectObject(memDC, oldBrush);
             
             DeleteObject(currentBrush);
 
             SetBkMode(memDC, TRANSPARENT);
-            sprintf(printDimensions, " Mouse X: %ld\n Mouse Y: %ld", pt.x, pt.y);
-            DrawText(memDC, printDimensions, -1, &hzBox, DT_LEFT);
+            sprintf(printDimensions, " Mouse X: %ld\n Mouse Y: %ld", app.mousePosition.x, app.mousePosition.y);
+            DrawText(memDC, printDimensions, -1, &app.demoRect, DT_LEFT);
 
             // Draw bottom bar rectangle
-            SelectObject(memDC, statPen);
-            SelectObject(memDC, wnDimBr);
-            Rectangle(memDC, statDisplay.left, statDisplay.top, statDisplay.right, statDisplay.bottom);
+            SelectObject(memDC, app.statusPen);
+            SelectObject(memDC, app.statusBrush);
+            Rectangle(memDC, app.statusRect.left, app.statusRect.top, app.statusRect.right, app.statusRect.bottom);
 
-            sprintf(windowInfo, "Window width: %d    Window height: %d", windowWidth, windowHeight);
-            DrawText(memDC, windowInfo, -1, &statDisplay, DT_LEFT);
+            sprintf(windowInfo, "Window width: %d    Window height: %d", app.windowWidth, app.windowHeight);
+            DrawText(memDC, windowInfo, -1, &app.statusRect, DT_LEFT);
 
             // Final blit
-            BitBlt(hdc, 0, 0, rcClient.right, rcClient.bottom, memDC, 0, 0, SRCCOPY);
+            BitBlt(hdc, 0, 0, app.clientRect.right, app.clientRect.bottom, memDC, 0, 0, SRCCOPY);
 
             SelectObject(memDC, oldBitmap);
             DeleteObject(memBitmap);
@@ -163,21 +156,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         case WM_MOUSEMOVE:
         {
-            pt.x = (LONG)LOWORD(lParam);
-            pt.y = (LONG)HIWORD(lParam);
+            app.mousePosition.x = (LONG)LOWORD(lParam);
+            app.mousePosition.y = (LONG)HIWORD(lParam);
             
-            InvalidateRect(hwnd, &hzBox, FALSE);
+            InvalidateRect(hwnd, &app.demoRect, FALSE);
         }
         break;
 
         case WM_SIZE:
         {
-            GetClientRect(hwnd, &rcClient);
+            GetClientRect(hwnd, &app.clientRect);
             
-            windowWidth = rcClient.right - rcClient.left;
-            windowHeight = rcClient.bottom - rcClient.top;
+            app.windowWidth = app.clientRect.right - app.clientRect.left;
+            app.windowHeight = app.clientRect.bottom - app.clientRect.top;
             
-            SetRect(&statDisplay, 0, rcClient.bottom - 20, rcClient.right, rcClient.bottom);
+            SetRect(&app.statusRect, 0, app.clientRect.bottom - 20, app.clientRect.right, app.clientRect.bottom);
             
             InvalidateRect(hwnd, NULL, FALSE);
         }
@@ -191,9 +184,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         break;
 
         case WM_DESTROY:
-            DeleteObject(hPen);
-            DeleteObject(statPen);
-            DeleteObject(wnDimBr);
+            if (app.demoPen != NULL)
+            {
+                DeleteObject(app.demoPen);
+                app.demoPen = NULL;
+            }
+            if (app.statusPen != NULL)
+            {
+                DeleteObject(app.statusPen);
+                app.statusPen = NULL;
+            }
+            if (app.statusBrush != NULL)
+            {
+                DeleteObject(app.statusBrush);
+                app.statusBrush = NULL;
+            }
             
             PostQuitMessage(0);
         break;
