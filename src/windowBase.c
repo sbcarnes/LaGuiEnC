@@ -4,17 +4,33 @@
 
 const char g_szClassName[] = "myWindowClass";
 
+typedef struct AppState
+{
+    HWND cycleButton;
+    HWND resetButton;
+    HWND demoSelector;
+    
+    RECT clientRect;
+    RECT demoRect;
+    RECT statusRect;
+    
+    POINT mousePosition;
+    
+    HBRUSH statusBrush;
+    HPEN demoPen;
+    HPEN statusPen;
+    
+    int colorIndex;
+    int windowWidth;
+    int windowHeight;
+} AppState;
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    static HDC hdcCompat;
-    static HBITMAP hbmp;
-
     static RECT rcClient;
     static RECT hzBox;
     static RECT statDisplay;
-    static RECT cnvRect;
-
-    static HBRUSH csrTrkBr;
+    
     static HBRUSH wnDimBr;
     static HPEN hPen;
     static HPEN statPen;
@@ -26,12 +42,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     static int windowWidth;
     static int windowHeight;
     
-    static BOOL buttonActive = FALSE;
-    
     static int redVal[4] = {245,245,66,66};
     static int greVal[4] = {66,245,245,66};
     static int bluVal[4] = {66,66,66,245};
     static int rgbInc = 0;
+    
+    static AppState app;
 
     switch (msg)
     {
@@ -40,14 +56,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             CREATESTRUCT *pCreate = (CREATESTRUCT *) lParam;
             HINSTANCE hInstance = pCreate->hInstance;
             
-            HDC hdc = GetDC(hwnd);
-            hdcCompat = CreateCompatibleDC(hdc);
             GetClientRect(hwnd, &rcClient);
 
-            GetClientRect(hwnd, &cnvRect);
-
             hPen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
-            csrTrkBr = CreateSolidBrush(RGB(177, 177, 230));
             SetRect(&hzBox, 20, 20, 140, 100);
 
             windowWidth = rcClient.right - rcClient.left;
@@ -78,20 +89,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 hInstance,
                 NULL
             );
-
-            ReleaseDC(hwnd, hdc);
         }
         break;
         
         case WM_COMMAND: {
             int control_id = LOWORD(wParam);
             int notification = HIWORD(wParam);
-            HWND hwndControl = (HWND)lParam;
             
             if (notification == BN_CLICKED) {
                 //MessageBeep(MB_OK);
                 if(control_id ==1){
-                    buttonActive = !buttonActive;
                     rgbInc++;
                     rgbInc = rgbInc % (sizeof(redVal) / sizeof(redVal[0]));
                 }
@@ -184,9 +191,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         break;
 
         case WM_DESTROY:
-            DeleteDC(hdcCompat);
             DeleteObject(hPen);
-            DeleteObject(csrTrkBr);
             DeleteObject(statPen);
             DeleteObject(wnDimBr);
             
