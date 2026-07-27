@@ -10,6 +10,14 @@ enum ControlId
     ID_BUTTON_RESET = 1002
 };
 
+static const COLORREF demoColors[] = 
+{
+    RGB(245, 66, 66),
+    RGB(245, 245, 66),
+    RGB(66, 245, 66),
+    RGB(66, 66, 245)
+};
+
 typedef struct AppState
 {
     HWND cycleButton;
@@ -131,15 +139,91 @@ static BOOL CreateAppControls(HWND hwnd, HINSTANCE hInstance, AppState *app)
     return TRUE;
 }
 
+static void DrawStatusBar(HDC hdc, const AppState *app)
+{
+    char windowInfo[128];
+    
+    HPEN oldPen = (HPEN)SelectObject(hdc, app->statusPen);
+    
+    HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, app->statusBrush);
+    
+    Rectangle(
+        hdc,
+        app->statusRect.left,
+        app->statusRect.top,
+        app->statusRect.right,
+        app->statusRect.bottom
+    );
+    
+    SelectObject(hdc, oldBrush);
+    SelectObject(hdc, oldPen);
+    
+    snprintf(
+        windowInfo,
+        sizeof(windowInfo),
+        "Window width: %d    Window height: %d",
+        app->windowWidth,
+        app->windowHeight
+    );
+    
+    RECT textRect = app->statusRect;
+    
+    int oldBackgroundMode = SetBkMode(hdc, TRANSPARENT);
+    
+    DrawText(
+        hdc, windowInfo, -1, &textRect, DT_LEFT
+    );
+    
+    SetBkMode(hdc, oldBackgroundMode);
+}
+
+static void DrawDemo(HDC hdc, const AppState *app)
+{
+    char mouseText[64];
+    
+    HBRUSH currentBrush = CreateSolidBrush(demoColors[app->colorIndex]);
+    
+    if (currentBrush == NULL)
+    {
+        return;
+    }
+    
+    HPEN oldPen = (HPEN)SelectObject(hdc, app->demoPen);
+    
+    HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, currentBrush);
+    
+    Rectangle(
+        hdc,
+        app->demoRect.left,
+        app->demoRect.top,
+        app->demoRect.right,
+        app->demoRect.bottom
+    );
+    
+    SelectObject(hdc, oldBrush);
+    SelectObject(hdc, oldPen);
+    
+    DeleteObject(currentBrush);
+    
+    snprintf(
+        mouseText,
+        sizeof(mouseText),
+        " Mouse X: %ld\n Mouse Y: %ld",
+        app->mousePosition.x,
+        app->mousePosition.y
+    );
+    
+    RECT textRect = app->demoRect;
+    
+    int oldBackgroundMode = SetBkMode(hdc, TRANSPARENT);
+    
+    DrawText(hdc, mouseText, -1, &textRect, DT_LEFT);
+    
+    SetBkMode(hdc, oldBackgroundMode);
+}
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    static char printDimensions[64];
-    static char windowInfo[128];
-    
-    static int redVal[4] = {245,245,66,66};
-    static int greVal[4] = {66,245,245,66};
-    static int bluVal[4] = {66,66,66,245};
-    
     static AppState app;
 
     switch (msg)
@@ -173,8 +257,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             if (notification == BN_CLICKED) {
                 //MessageBeep(MB_OK);
                 if(control_id == ID_BUTTON_CYCLE){
-                    app.colorIndex++;
-                    app.colorIndex = app.colorIndex % (sizeof(redVal) / sizeof(redVal[0]));
+                    app.colorIndex = 
+                        (app.colorIndex + 1) % 
+                        (sizeof(demoColors) / sizeof(demoColors[0]));
                 }
                 else if(control_id == ID_BUTTON_RESET){
                     app.colorIndex = 0;
@@ -194,35 +279,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             GetClientRect(hwnd, &app.clientRect);
 
             HDC memDC = CreateCompatibleDC(hdc);
+            
             HBITMAP memBitmap = CreateCompatibleBitmap(hdc, app.clientRect.right, app.clientRect.bottom);
             HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, memBitmap);
 
             // Clear background in memory DC
             FillRect(memDC, &app.clientRect, (HBRUSH)(COLOR_WINDOW + 1));
 
-            // Draw static rectangle
-            SelectObject(memDC, app.demoPen);
-            HBRUSH currentBrush = CreateSolidBrush(RGB(redVal[app.colorIndex], greVal[app.colorIndex], bluVal[app.colorIndex]));
-            
-            HBRUSH oldBrush = SelectObject(memDC, currentBrush);
-            
-            Rectangle(memDC, app.demoRect.left, app.demoRect.top, app.demoRect.right, app.demoRect.bottom);
-            
-            SelectObject(memDC, oldBrush);
-            
-            DeleteObject(currentBrush);
-
-            SetBkMode(memDC, TRANSPARENT);
-            sprintf(printDimensions, " Mouse X: %ld\n Mouse Y: %ld", app.mousePosition.x, app.mousePosition.y);
-            DrawText(memDC, printDimensions, -1, &app.demoRect, DT_LEFT);
-
-            // Draw bottom bar rectangle
-            SelectObject(memDC, app.statusPen);
-            SelectObject(memDC, app.statusBrush);
-            Rectangle(memDC, app.statusRect.left, app.statusRect.top, app.statusRect.right, app.statusRect.bottom);
-
-            sprintf(windowInfo, "Window width: %d    Window height: %d", app.windowWidth, app.windowHeight);
-            DrawText(memDC, windowInfo, -1, &app.statusRect, DT_LEFT);
+            DrawDemo(memDC, &app);
+            DrawStatusBar(memDC, &app);
 
             // Final blit
             BitBlt(hdc, 0, 0, app.clientRect.right, app.clientRect.bottom, memDC, 0, 0, SRCCOPY);
