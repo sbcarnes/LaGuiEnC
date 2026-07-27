@@ -48,6 +48,56 @@ static void UpdateLayout(HWND hwnd, AppState *app)
     );
 }
 
+static void DestroyAppResources(AppState *app)
+{
+    if (app->demoPen != NULL)
+    {
+        DeleteObject(app->demoPen);
+        app->demoPen = NULL;
+    }
+    
+    if (app->statusPen != NULL)
+    {
+        DeleteObject(app->statusPen);
+        app->statusPen = NULL;
+    }
+    
+    if (app->statusBrush != NULL)
+    {
+        DeleteObject(app->statusBrush);
+        app->statusBrush = NULL;
+    }
+}
+
+static BOOL CreateAppResources(AppState *app)
+{
+    app->demoPen = CreatePen(
+        PS_SOLID,
+        2,
+        RGB(0, 0, 0)
+    );
+    
+    app->statusPen = CreatePen(
+        PS_SOLID,
+        3,
+        RGB(0, 100, 0)
+    );
+    
+    app->statusBrush = CreateSolidBrush(
+        RGB(190, 100, 30)
+    );
+    
+    if (app->demoPen == NULL ||
+        app->statusPen == NULL ||
+        app->statusBrush == NULL)
+    {
+        DestroyAppResources(app);
+        return FALSE;
+    }
+    
+    return TRUE;
+}
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     static char printDimensions[64];
@@ -66,11 +116,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             CREATESTRUCT *pCreate = (CREATESTRUCT *) lParam;
             HINSTANCE hInstance = pCreate->hInstance;
 
-            app.demoPen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
             SetRect(&app.demoRect, 20, 20, 140, 100);
 
-            app.statusPen = CreatePen(PS_SOLID, 3, RGB(0, 100, 0));
-            app.statusBrush = CreateSolidBrush(RGB(190, 100, 30));
+            if (!CreateAppResources(&app))
+            {
+                return -1;
+            }
             UpdateLayout(hwnd, &app);
             
             app.cycleButton = CreateWindow(
@@ -190,23 +241,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         break;
 
         case WM_DESTROY:
-            if (app.demoPen != NULL)
-            {
-                DeleteObject(app.demoPen);
-                app.demoPen = NULL;
-            }
-            if (app.statusPen != NULL)
-            {
-                DeleteObject(app.statusPen);
-                app.statusPen = NULL;
-            }
-            if (app.statusBrush != NULL)
-            {
-                DeleteObject(app.statusBrush);
-                app.statusBrush = NULL;
-            }
-            
+        {
+            DestroyAppResources(&app);
             PostQuitMessage(0);
+        }
         break;
 
         default:
