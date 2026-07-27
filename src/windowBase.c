@@ -31,6 +31,23 @@ typedef struct AppState
     int windowHeight;
 } AppState;
 
+static void UpdateLayout(HWND hwnd, AppState *app)
+{
+    GetClientRect(hwnd, &app->clientRect);
+    
+    app->windowWidth = app->clientRect.right - app->clientRect.left;
+    
+    app->windowHeight = app->clientRect.bottom - app->clientRect.top;
+    
+    SetRect(
+        &app->statusRect,
+        0,
+        app->clientRect.bottom - 20,
+        app->clientRect.right,
+        app->clientRect.bottom
+    );
+}
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     static char printDimensions[64];
@@ -48,18 +65,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         {
             CREATESTRUCT *pCreate = (CREATESTRUCT *) lParam;
             HINSTANCE hInstance = pCreate->hInstance;
-            
-            GetClientRect(hwnd, &app.clientRect);
 
             app.demoPen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
             SetRect(&app.demoRect, 20, 20, 140, 100);
 
-            app.windowWidth = app.clientRect.right - app.clientRect.left;
-            app.windowHeight = app.clientRect.bottom - app.clientRect.top;
-
             app.statusPen = CreatePen(PS_SOLID, 3, RGB(0, 100, 0));
             app.statusBrush = CreateSolidBrush(RGB(190, 100, 30));
-            SetRect(&app.statusRect, 0, app.clientRect.bottom - 20, app.clientRect.right, app.clientRect.bottom);
+            UpdateLayout(hwnd, &app);
             
             app.cycleButton = CreateWindow(
                 "BUTTON",
@@ -165,13 +177,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         case WM_SIZE:
         {
-            GetClientRect(hwnd, &app.clientRect);
-            
-            app.windowWidth = app.clientRect.right - app.clientRect.left;
-            app.windowHeight = app.clientRect.bottom - app.clientRect.top;
-            
-            SetRect(&app.statusRect, 0, app.clientRect.bottom - 20, app.clientRect.right, app.clientRect.bottom);
-            
+            UpdateLayout(hwnd, &app);
             InvalidateRect(hwnd, NULL, FALSE);
         }
         break;
