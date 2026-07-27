@@ -98,6 +98,39 @@ static BOOL CreateAppResources(AppState *app)
     return TRUE;
 }
 
+static BOOL CreateAppControls(HWND hwnd, HINSTANCE hInstance, AppState *app)
+{
+    app->cycleButton = CreateWindow(
+        "BUTTON",
+        "Cycle",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+        50, 150, 100, 30,
+        hwnd,
+        (HMENU)ID_BUTTON_CYCLE,
+        hInstance,
+        NULL
+    );
+    
+    app->resetButton = CreateWindow(
+        "BUTTON",
+        "Reset",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+        175, 150, 100, 30,
+        hwnd,
+        (HMENU)ID_BUTTON_RESET,
+        hInstance,
+        NULL
+    );
+    
+    if (app->cycleButton == NULL ||
+        app->resetButton == NULL)
+    {
+        return FALSE;
+    }
+    
+    return TRUE;
+}
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     static char printDimensions[64];
@@ -124,27 +157,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             }
             UpdateLayout(hwnd, &app);
             
-            app.cycleButton = CreateWindow(
-                "BUTTON",
-                "Cycle",
-                WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                50, 150, 100, 30,
-                hwnd,
-                (HMENU)ID_BUTTON_CYCLE,
-                hInstance,
-                NULL
-            );
+            if (!CreateAppControls(hwnd, hInstance, &app))
+            {
+                DestroyAppResources(&app);
+                return -1;
+            }
             
-            app.resetButton = CreateWindow(
-                "BUTTON",
-                "Reset",
-                WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                175, 150, 100, 30,
-                hwnd,
-                (HMENU)ID_BUTTON_RESET,
-                hInstance,
-                NULL
-            );
         }
         break;
         
