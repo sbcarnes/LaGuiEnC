@@ -2,13 +2,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define UI_MARGIN           20
+#define UI_GAP              12
+#define SELECTOR_WIDTH      300
+#define DEMO_WIDTH          400
+#define DEMO_HEIGHT         220
+#define BUTTON_WIDTH        100
+#define BUTTON_HEIGHT       30
+#define STATUS_HEIGHT       24
+
 const char g_szClassName[] = "myWindowClass";
 
 enum ControlId
 {
     ID_BUTTON_CYCLE = 1001,
-    ID_BUTTON_RESET = 1002
+    ID_BUTTON_RESET = 1002,
+    ID_COMBO_DEMO_SELECTOR = 1003
 };
+
+typedef enum DemoId
+{
+    DEMO_COLOR_CYCLE = 0,
+    DEMO_MOUSE_TRACKING
+} DemoId;
 
 static const COLORREF demoColors[] = 
 {
@@ -37,6 +53,8 @@ typedef struct AppState
     int colorIndex;
     int windowWidth;
     int windowHeight;
+    
+    DemoId currentDemo;
 } AppState;
 
 static void UpdateLayout(HWND hwnd, AppState *app)
@@ -48,12 +66,56 @@ static void UpdateLayout(HWND hwnd, AppState *app)
     app->windowHeight = app->clientRect.bottom - app->clientRect.top;
     
     SetRect(
+        &app->demoRect,
+        UI_MARGIN,
+        65,
+        UI_MARGIN + DEMO_WIDTH,
+        65 + DEMO_HEIGHT
+    );
+    
+    SetRect(
         &app->statusRect,
         0,
-        app->clientRect.bottom - 20,
+        app->clientRect.bottom - STATUS_HEIGHT,
         app->clientRect.right,
         app->clientRect.bottom
     );
+    
+    if (app->demoSelector != NULL)
+    {
+        MoveWindow(
+            app->demoSelector,
+            UI_MARGIN,
+            UI_MARGIN,
+            SELECTOR_WIDTH,
+            200,
+            TRUE
+        );
+    }
+    
+    if (app->cycleButton != NULL)
+    {
+        MoveWindow(
+            app->cycleButton,
+            UI_MARGIN,
+            app->demoRect.bottom + UI_GAP,
+            BUTTON_WIDTH,
+            BUTTON_HEIGHT,
+            TRUE
+        );
+    }
+    
+    if (app->resetButton != NULL)
+    {
+        MoveWindow(
+            app->resetButton,
+            UI_MARGIN + BUTTON_WIDTH + UI_GAP,
+            app->demoRect.bottom + UI_GAP,
+            BUTTON_WIDTH,
+            BUTTON_HEIGHT,
+            TRUE
+        );
+    }
 }
 
 static void DestroyAppResources(AppState *app)
@@ -130,8 +192,43 @@ static BOOL CreateAppControls(HWND hwnd, HINSTANCE hInstance, AppState *app)
         NULL
     );
     
+    app->demoSelector = CreateWindow(
+        "COMBOBOX",
+        "",
+        WS_CHILD | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWNLIST | WS_VSCROLL,
+        20, 110, 255, 200,
+        hwnd,
+        (HMENU)ID_COMBO_DEMO_SELECTOR,
+        hInstance,
+        NULL
+    );
+    
+    SendMessage(
+        app->demoSelector,
+        CB_ADDSTRING,
+        0,
+        (LPARAM)"Color Cycling"
+    );
+    
+    SendMessage(
+        app->demoSelector,
+        CB_ADDSTRING,
+        0,
+        (LPARAM)"Mouse Tracking"
+    );
+    
+    SendMessage(
+        app->demoSelector,
+        CB_SETCURSEL,
+        DEMO_COLOR_CYCLE,
+        0
+    );
+    
+    app->currentDemo = DEMO_COLOR_CYCLE;
+    
     if (app->cycleButton == NULL ||
-        app->resetButton == NULL)
+        app->resetButton == NULL ||
+        app->demoSelector == NULL)
     {
         return FALSE;
     }
@@ -177,20 +274,18 @@ static void DrawStatusBar(HDC hdc, const AppState *app)
     SetBkMode(hdc, oldBackgroundMode);
 }
 
-static void DrawDemo(HDC hdc, const AppState *app)
+static void DrawColorDemo(HDC hdc, const AppState *app)
 {
-    char mouseText[64];
+    HBRUSH colorBrush = CreateSolidBrush(demoColors[app->colorIndex]);
     
-    HBRUSH currentBrush = CreateSolidBrush(demoColors[app->colorIndex]);
-    
-    if (currentBrush == NULL)
+    if (colorBrush == NULL)
     {
         return;
     }
     
     HPEN oldPen = (HPEN)SelectObject(hdc, app->demoPen);
     
-    HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, currentBrush);
+    HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, colorBrush);
     
     Rectangle(
         hdc,
@@ -203,23 +298,78 @@ static void DrawDemo(HDC hdc, const AppState *app)
     SelectObject(hdc, oldBrush);
     SelectObject(hdc, oldPen);
     
-    DeleteObject(currentBrush);
+    DeleteObject(colorBrush);
+}
+
+static void DrawMouseDemo(HDC hdc, const AppState *app)
+{
+    char mouseText[64];
+    
+    HPEN oldPen = (HPEN)SelectObject(hdc, app->demoPen);
+    
+    HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(WHITE_BRUSH));
+    
+    Rectangle(
+        hdc,
+        app->demoRect.left,
+        app->demoRect.top,
+        app->demoRect.right,
+        app->demoRect.bottom
+    );
+    
+    SelectObject(hdc, oldBrush);
+    SelectObject(hdc, oldPen);
     
     snprintf(
         mouseText,
         sizeof(mouseText),
-        " Mouse X: %ld\n Mouse Y: %ld",
+        "Mouse X: %ld\nMouse Y: %ld",
         app->mousePosition.x,
         app->mousePosition.y
     );
     
     RECT textRect = app->demoRect;
     
+    /*
+        Give padding to the top-left corner of the rectangle
+    */
+    
+    textRect.left += 10;
+    textRect.top += 10;
+    
     int oldBackgroundMode = SetBkMode(hdc, TRANSPARENT);
     
-    DrawText(hdc, mouseText, -1, &textRect, DT_LEFT);
+    DrawText(
+        hdc, mouseText, -1, &textRect, DT_LEFT
+    );
     
     SetBkMode(hdc, oldBackgroundMode);
+}
+static void DrawDemo(HDC hdc, const AppState *app)
+{
+    
+    switch (app->currentDemo)
+    {
+        case DEMO_COLOR_CYCLE:
+            DrawColorDemo(hdc, app);
+            break;
+            
+        case DEMO_MOUSE_TRACKING:
+            DrawMouseDemo(hdc, app);
+            break;
+        
+        default:
+            break;
+    }
+}
+
+static void UpdateDemoControls(AppState *app)
+{
+    BOOL showColorControls = app->currentDemo == DEMO_COLOR_CYCLE;
+    
+    ShowWindow(app->cycleButton, showColorControls ? SW_SHOW : SW_HIDE);
+    
+    ShowWindow(app->resetButton, showColorControls ? SW_SHOW : SW_HIDE);
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -233,19 +383,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             CREATESTRUCT *pCreate = (CREATESTRUCT *) lParam;
             HINSTANCE hInstance = pCreate->hInstance;
 
-            SetRect(&app.demoRect, 20, 20, 140, 100);
-
             if (!CreateAppResources(&app))
             {
                 return -1;
             }
-            UpdateLayout(hwnd, &app);
             
             if (!CreateAppControls(hwnd, hInstance, &app))
             {
                 DestroyAppResources(&app);
                 return -1;
             }
+            
+            //SetRect(&app.demoRect, 20, 20, 140, 100);
+
+            
+            UpdateLayout(hwnd, &app);
+            UpdateDemoControls(&app);
+            
+            
             
         }
         break;
@@ -266,6 +421,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 }
                 
                 InvalidateRect(hwnd, &app.demoRect, FALSE);
+            }
+            
+            if (control_id == ID_COMBO_DEMO_SELECTOR && notification == CBN_SELCHANGE)
+            {
+                LRESULT selection = SendMessage(
+                    app.demoSelector, CB_GETCURSEL, 0, 0
+                );
+                
+                if (selection != CB_ERR)
+                {
+                    app.currentDemo = (DemoId)selection;
+                    
+                    UpdateDemoControls(&app);
+                    InvalidateRect(hwnd, &app.demoRect, FALSE);
+                }
             }
             break;
         }
@@ -305,7 +475,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             app.mousePosition.x = (LONG)LOWORD(lParam);
             app.mousePosition.y = (LONG)HIWORD(lParam);
             
-            InvalidateRect(hwnd, &app.demoRect, FALSE);
+            if (app.currentDemo == DEMO_MOUSE_TRACKING)
+            {
+                InvalidateRect(hwnd, &app.demoRect, FALSE);
+            }
+            
         }
         break;
 
