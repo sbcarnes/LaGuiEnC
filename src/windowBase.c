@@ -23,7 +23,8 @@ enum ControlId
 typedef enum DemoId
 {
     DEMO_COLOR_CYCLE = 0,
-    DEMO_MOUSE_TRACKING
+    DEMO_MOUSE_TRACKING,
+    DEMO_KEYBOARD_INPUT
 } DemoId;
 
 static const COLORREF demoColors[] = 
@@ -55,6 +56,10 @@ typedef struct AppState
     int windowHeight;
     
     DemoId currentDemo;
+    
+    UINT lastVirtualKey;
+    BOOL keyIsDown;
+    BOOL hasKeyboardFocus;
 } AppState;
 
 static void UpdateLayout(HWND hwnd, AppState *app)
@@ -219,6 +224,13 @@ static BOOL CreateAppControls(HWND hwnd, HINSTANCE hInstance, AppState *app)
     
     SendMessage(
         app->demoSelector,
+        CB_ADDSTRING,
+        0,
+        (LPARAM)"Keyboard Input and Focus"
+    );
+    
+    SendMessage(
+        app->demoSelector,
         CB_SETCURSEL,
         DEMO_COLOR_CYCLE,
         0
@@ -345,6 +357,65 @@ static void DrawMouseDemo(HDC hdc, const AppState *app)
     
     SetBkMode(hdc, oldBackgroundMode);
 }
+
+static void DrawKeyboardDemo(HDC hdc, const AppState *app)
+{
+    char keyboardText[128];
+    
+    HPEN oldPen = (HPEN)SelectObject(hdc, app->demoPen);
+    
+    HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(WHITE_BRUSH));
+    
+    Rectangle(
+        hdc,
+        app->demoRect.left,
+        app->demoRect.top,
+        app->demoRect.right,
+        app->demoRect.bottom
+    );
+    
+    SelectObject(hdc, oldBrush);
+    SelectObject(hdc, oldPen);
+    
+    if (app->lastVirtualKey == 0)
+    {
+        snprintf(
+            keyboardText,
+            sizeof(keyboardText),
+            "Keyboard focus: %s\n"
+            "Key state: No key recorded\n"
+            "Virtual key: None",
+            app->hasKeyboardFocus ? "Yes" : "No"
+        );
+    }
+    else
+    {
+        snprintf(
+            keyboardText,
+            sizeof(keyboardText),
+            "Keyboard focus: %s\n"
+            "Key state: %s\n"
+            "Virtual key: %u",
+            app->hasKeyboardFocus ? "Yes" : "No",
+            app->keyIsDown ? "Down" : "Up",
+            app->lastVirtualKey
+        );
+    }
+    
+    RECT textRect = app->demoRect;
+    
+    textRect.left += 10;
+    textRect.top += 10;
+    
+    int oldBackgroundMode = SetBkMode(hdc, TRANSPARENT);
+    
+    DrawText(
+        hdc, keyboardText, -1, &textRect, DT_LEFT
+    );
+    
+    SetBkMode(hdc, oldBackgroundMode);
+}
+
 static void DrawDemo(HDC hdc, const AppState *app)
 {
     
@@ -356,6 +427,10 @@ static void DrawDemo(HDC hdc, const AppState *app)
             
         case DEMO_MOUSE_TRACKING:
             DrawMouseDemo(hdc, app);
+            break;
+        
+        case DEMO_KEYBOARD_INPUT:
+            DrawKeyboardDemo(hdc, app);
             break;
         
         default:
@@ -393,8 +468,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 DestroyAppResources(&app);
                 return -1;
             }
-            
-            //SetRect(&app.demoRect, 20, 20, 140, 100);
 
             
             UpdateLayout(hwnd, &app);
@@ -434,12 +507,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                     app.currentDemo = (DemoId)selection;
                     
                     UpdateDemoControls(&app);
+                    
+                    if (app.currentDemo == DEMO_KEYBOARD_INPUT)
+                    {
+                        SetFocus(hwnd);
+                    }
+                    
                     InvalidateRect(hwnd, &app.demoRect, FALSE);
                 }
             }
             break;
         }
         
+        case WM_LBUTTONDOWN:
+        {
+            if (app.currentDemo == DEMO_KEYBOARD_INPUT)
+            {
+                SetFocus(hwnd);
+            }
+        }
+        break;
 
         case WM_PAINT:
         {
@@ -480,6 +567,52 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 InvalidateRect(hwnd, &app.demoRect, FALSE);
             }
             
+        }
+        break;
+        
+        case WM_KEYDOWN:
+        {
+            app.lastVirtualKey = (UINT)wParam;
+            app.keyIsDown = TRUE;
+            
+            if (app.currentDemo == DEMO_KEYBOARD_INPUT)
+            {
+                InvalidateRect(hwnd, &app.demoRect, FALSE);
+            }
+        }
+        break;
+        
+        case WM_KEYUP:
+        {
+            app.lastVirtualKey = (UINT)wParam;
+            app.keyIsDown = FALSE;
+            
+            if (app.currentDemo == DEMO_KEYBOARD_INPUT)
+            {
+                InvalidateRect(hwnd, &app.demoRect, FALSE);
+            }
+        }
+        break;
+        
+        case WM_SETFOCUS:
+        {
+            app.hasKeyboardFocus = TRUE;
+            
+            if (app.currentDemo == DEMO_KEYBOARD_INPUT)
+            {
+                InvalidateRect(hwnd, &app.demoRect, FALSE);
+            }
+        }
+        break;
+        
+        case WM_KILLFOCUS:
+        {
+            app.hasKeyboardFocus = FALSE;
+            
+            if (app.currentDemo == DEMO_KEYBOARD_INPUT)
+            {
+                InvalidateRect(hwnd, &app.demoRect, FALSE);
+            }
         }
         break;
 
