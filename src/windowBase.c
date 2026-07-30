@@ -14,7 +14,7 @@ static const COLORREF demoColors[] =
     RGB(66, 66, 245)
 };
 
-static void UpdateLayout(HWND hwnd, AppState *app)
+void UpdateLayout(HWND hwnd, AppState *app)
 {
     GetClientRect(hwnd, &app->clientRect);
     
@@ -75,7 +75,7 @@ static void UpdateLayout(HWND hwnd, AppState *app)
     }
 }
 
-static void DestroyAppResources(AppState *app)
+void DestroyAppResources(AppState *app)
 {
     if (app->demoPen != NULL)
     {
@@ -96,7 +96,7 @@ static void DestroyAppResources(AppState *app)
     }
 }
 
-static BOOL CreateAppResources(AppState *app)
+BOOL CreateAppResources(AppState *app)
 {
     app->demoPen = CreatePen(
         PS_SOLID,
@@ -125,7 +125,7 @@ static BOOL CreateAppResources(AppState *app)
     return TRUE;
 }
 
-static BOOL CreateAppControls(HWND hwnd, HINSTANCE hInstance, AppState *app)
+BOOL CreateAppControls(HWND hwnd, HINSTANCE hInstance, AppState *app)
 {
     app->cycleButton = CreateWindow(
         "BUTTON",
@@ -200,7 +200,7 @@ static BOOL CreateAppControls(HWND hwnd, HINSTANCE hInstance, AppState *app)
     return TRUE;
 }
 
-static void DrawStatusBar(HDC hdc, const AppState *app)
+void DrawStatusBar(HDC hdc, const AppState *app)
 {
     char windowInfo[128];
     
@@ -390,7 +390,7 @@ static void DrawDemo(HDC hdc, const AppState *app)
     }
 }
 
-static void UpdateDemoControls(AppState *app)
+void UpdateDemoControls(AppState *app)
 {
     BOOL showColorControls = app->currentDemo == DEMO_COLOR_CYCLE;
     

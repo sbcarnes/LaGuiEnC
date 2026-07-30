@@ -53,4 +53,22 @@ typedef struct AppState
     BOOL hasKeyboardFocus;
 } AppState;
 
+void UpdateLayout(HWND hwnd, AppState *app);
+
+BOOL CreateAppResources(AppState *app);
+void DestroyAppResources(AppState *app);
+
+BOOL CreateAppControls(
+    HWND hwnd,
+    HINSTANCE hInstance,
+    AppState *app
+);
+
+void UpdateDemoControls(AppState *app);
+
+void DrawStatusBar(
+    HDC hdc,
+    const AppState *app
+);
+
 #endif
