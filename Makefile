@@ -7,7 +7,7 @@ LIBS = -lgdi32
 CFLAGS = -Wl,-subsystem,windows -mwindows
 
 # Main source file
-SRC = src/windowBase.c src/app.c
+SRC = src/windowBase.c src/app.c src/demos.c
 
 BUILD_DIR = build
 BIN_DIR = bin
