@@ -1,7 +1,5 @@
 CC = gcc
 
-LINK_EXE = ./bin/windowBase.exe
-
 # Libraries to include
 LIBS = -lgdi32
 
@@ -9,21 +7,30 @@ LIBS = -lgdi32
 CFLAGS = -Wl,-subsystem,windows -mwindows
 
 # Main source file
-SRC = src/windowBase.c
+SRC = src/windowBase.c src/app.c
 
-# Object file(s)
-OBJS = build/windowBase.o
+BUILD_DIR = build
+BIN_DIR = bin
 
-all: $(OBJS) $(LINK_EXE)
+OBJ = $(SRC:src/%.c=$(BUILD_DIR)/%.o)
 
-$(OBJS):$(SRC)
+# Output executable
+BIN = $(BIN_DIR)/windowBase.exe
 
-$(OBJS):
-	$(CC) -c $(SRC) $(LIBS) -o $@
+# Default target
+all: $(BIN)
 
-$(LINK_EXE): $(OBJS)
-	$(CC) $(LIBS) $(CFLAGS) $^ -o $@
+# Link object files into the exe
+$(BIN): $(OBJ)
+	@if not exist $(BIN_DIR) mkdir $(BIN_DIR)
+	$(CC) $(OBJ) -o $@ $(CFLAGS)
 
+# Compile .c file into .o files
+$(BUILD_DIR)/%.o: src/%.c
+	@if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
+	$(CC) -c $< -o $@ $(CFLAGS)
+
+# Clean up build artifacts
 clean:
-	@if exist "build\windowBase.o" del /Q "build\windowBase.o"
-	@if exist "bin\windowBase.exe" del /Q "bin\windowBase.exe"
+	-if exist $(BUILD_DIR) rmdir /s /q $(BUILD_DIR)
+	-if exist $(BIN_DIR) rmdir /s /q $(BIN_DIR)
