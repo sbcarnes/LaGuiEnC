@@ -4,7 +4,7 @@ CC = gcc
 LIBS = -lgdi32
 
 # Prevent terminal window also opening
-CFLAGS = -Wl,-subsystem,windows -mwindows
+CFLAGS = -Wl,-subsystem,windows -mwindows -Wall -Wextra -Wpedantic
 
 # Main source file
 SRC = src/windowBase.c src/app.c src/demos.c

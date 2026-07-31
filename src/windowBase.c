@@ -7,6 +7,8 @@
 
 const char g_szClassName[] = "myWindowClass";
 
+static BOOL g_startupErrorReported = FALSE;
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     static AppState app;
@@ -20,12 +22,27 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
             if (!CreateAppResources(&app))
             {
+                MessageBox(
+                    hwnd,
+                    "LaGuiEnC could not create its drawing resources.",
+                    "Startup Error",
+                    MB_OK | MB_ICONERROR
+                );
                 return -1;
             }
             
             if (!CreateAppControls(hwnd, hInstance, &app))
             {
                 DestroyAppResources(&app);
+                
+                MessageBox(
+                    hwnd,
+                    "LaGuiEnC could not create its interface controls.",
+                    "Startup Error",
+                    MB_OK | MB_ICONERROR
+                );
+                
+                g_startupErrorReported = TRUE;
                 return -1;
             }
 
@@ -203,6 +220,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+    (void)hPrevInstance;
+    (void)lpCmdLine;
+    
     WNDCLASSEX wc;
     HWND hwnd;
     MSG Msg;
@@ -236,8 +256,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     if (hwnd == NULL)
     {
-        MessageBox(NULL, "Window Creation Failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
-        return 0;
+        if (!g_startupErrorReported)
+        {
+            MessageBox(
+                    NULL,
+                    "LaGuiEnC could not create its main window.",
+                    "Startup Error",
+                    MB_OK | MB_ICONERROR
+                );
+        }
+        return 1;
     }
 
     ShowWindow(hwnd, nCmdShow);
