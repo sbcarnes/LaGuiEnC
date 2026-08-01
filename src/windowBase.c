@@ -4,6 +4,7 @@
 
 #include "app.h"
 #include "demos.h"
+#include "../resources/resource.h"
 
 const char g_szClassName[] = "myWindowClass";
 
@@ -233,12 +234,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;
     wc.hInstance = hInstance;
-    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_LAGUIENC));
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = NULL;
     wc.lpszMenuName = NULL;
     wc.lpszClassName = g_szClassName;
-    wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+    wc.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_LAGUIENC));
 
     if (!RegisterClassEx(&wc))
     {
