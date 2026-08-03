@@ -17,7 +17,7 @@ WINDRES = windres
 OBJ = $(SRC:src/%.c=$(BUILD_DIR)/%.o)
 
 # Output executable
-BIN = $(BIN_DIR)/windowBase.exe
+BIN = $(BIN_DIR)/LaGuiEnC.exe
 
 # Default target
 all: $(BIN)
